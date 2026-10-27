@@ -1,0 +1,8 @@
+venv/
+data/
+__pycache__/
+*.pyc
+*.egg-info/
+.env
+test_book.pdf
+create_test_pdf.py

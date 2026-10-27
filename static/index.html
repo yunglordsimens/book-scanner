@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Scanner</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242836;
+  --border: #2e3345;
+  --text: #e1e4ed;
+  --text2: #8b90a0;
+  --accent: #6c8cff;
+  --accent-dim: #4a62b8;
+  --success: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --radius: 10px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; }
+h1 span { color: var(--accent); }
+.subtitle { color: var(--text2); margin-bottom: 2rem; font-size: 0.95rem; }
+
+h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Upload area */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(108, 140, 255, 0.05);
+}
+.upload-zone svg { margin-bottom: 0.8rem; }
+.upload-zone p { color: var(--text2); }
+.upload-zone .browse { color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+/* File list */
+.file-list { list-style: none; margin: 1rem 0; }
+.file-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.7rem 1rem;
+  background: var(--surface2);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+.file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .size { color: var(--text2); margin-left: 1rem; white-space: nowrap; }
+.file-item .remove { color: var(--danger); cursor: pointer; margin-left: 1rem; background: none; border: none; font-size: 1.1rem; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: none; border-radius: 6px;
+  font-size: 0.9rem; font-weight: 500;
+  cursor: pointer; transition: opacity 0.2s;
+  text-decoration: none;
+}
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-success { background: var(--success); color: #000; }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+
+.btn-row { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* Form */
+input[type="text"] {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.95rem;
+  width: 100%;
+}
+input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+label { display: block; font-size: 0.85rem; color: var(--text2); margin-bottom: 0.4rem; }
+
+/* Radio group */
+.radio-group { display: flex; gap: 1rem; margin: 0.8rem 0; }
+.radio-group label {
+  display: flex; align-items: center; gap: 0.4rem;
+  cursor: pointer; color: var(--text); font-size: 0.9rem;
+}
+
+/* Progress */
+.progress-bar {
+  height: 6px; background: var(--surface2); border-radius: 3px;
+  overflow: hidden; margin: 0.8rem 0;
+}
+.progress-bar .fill {
+  height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width 0.3s;
+}
+.progress-text { font-size: 0.85rem; color: var(--text2); }
+
+/* Book list */
+.book-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.2rem;
+  background: var(--surface2);
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.book-item:hover { background: var(--border); }
+.book-info { flex: 1; }
+.book-info .title { font-weight: 600; margin-bottom: 0.2rem; }
+.book-info .meta { font-size: 0.82rem; color: var(--text2); }
+.book-status {
+  font-size: 0.78rem; padding: 0.25rem 0.6rem;
+  border-radius: 99px; font-weight: 500;
+}
+.status-created { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+.status-processed { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+.status-processing { background: rgba(108, 140, 255, 0.15); color: var(--accent); }
+
+/* Preview */
+.preview-page {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+}
+.preview-page .page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.6rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+}
+.preview-page .page-num { font-weight: 600; font-size: 0.85rem; }
+.preview-page .page-meta { font-size: 0.75rem; color: var(--text2); }
+.preview-page .page-text {
+  white-space: pre-wrap; font-size: 0.88rem; line-height: 1.6;
+  max-height: 300px; overflow-y: auto;
+  color: var(--text);
+}
+.badge {
+  display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.45rem;
+  border-radius: 4px; font-weight: 500;
+}
+.badge-ocr { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+.badge-text { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+.badge-error { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+.tab {
+  padding: 0.7rem 1.2rem; cursor: pointer; font-size: 0.9rem; color: var(--text2);
+  border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Nav */
+.nav { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.nav .back {
+  color: var(--text2); cursor: pointer; background: none; border: none;
+  font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem;
+}
+.nav .back:hover { color: var(--text); }
+
+/* Errors */
+.error-list { max-height: 150px; overflow-y: auto; font-size: 0.82rem; }
+.error-list div { color: var(--danger); padding: 0.3rem 0; }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .container { padding: 1rem; }
+  .upload-zone { padding: 2rem 1rem; }
+  .btn-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📖 Book <span>Scanner</span></h1>
+  <p class="subtitle">Turn scanned PDFs into readable ebooks</p>
+
+  <!-- ===== MAIN VIEW ===== -->
+  <div id="view-main" class="view active">
+    <!-- Upload -->
+    <div class="card">
+      <h2>Upload PDFs</h2>
+      <div class="upload-zone" id="upload-zone">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
+        <p>Drag &amp; drop PDF files here, or <span class="browse">browse</span></p>
+      </div>
+      <input type="file" id="file-input" accept=".pdf" multiple hidden>
+      <ul class="file-list" id="file-list"></ul>
+      <div id="upload-actions" style="display:none;">
+        <label for="book-title">Book Title</label>
+        <input type="text" id="book-title" placeholder="My Scanned Book">
+        <div class="radio-group">
+          <label><input type="radio" name="grouping" value="one" checked> Combine into one book</label>
+          <label><input type="radio" name="grouping" value="separate"> Keep as separate books</label>
+        </div>
+        <div id="existing-book-select" style="display:none; margin: 0.8rem 0;">
+          <label><input type="radio" name="grouping" value="existing"> Add to existing book:</label>
+          <select id="existing-book-id" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.4rem;margin-left:0.5rem;"></select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-create-book">Create Book &amp; Start Processing</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Book Library -->
+    <div class="card">
+      <h2>Your Books</h2>
+      <div id="book-list"><p style="color:var(--text2)">No books yet. Upload a PDF to get started.</p></div>
+    </div>
+  </div>
+
+  <!-- ===== BOOK DETAIL VIEW ===== -->
+  <div id="view-book" class="view">
+    <div class="nav">
+      <button class="back" id="btn-back">← Back to Library</button>
+    </div>
+    <h2 id="book-detail-title">Book Title</h2>
+    <div class="card" id="book-detail-info"></div>
+
+    <!-- Processing -->
+    <div class="card" id="processing-card" style="display:none;">
+      <h2>Processing</h2>
+      <div class="progress-bar"><div class="fill" id="progress-fill"></div></div>
+      <p class="progress-text" id="progress-text">Starting…</p>
+      <div class="error-list" id="error-list"></div>
+    </div>
+
+    <div class="tabs" id="book-tabs">
+      <div class="tab active" data-tab="preview">Preview</div>
+      <div class="tab" data-tab="export">Export</div>
+      <div class="tab" data-tab="manage">Manage</div>
+    </div>
+
+    <!-- Preview Tab -->
+    <div class="tab-content" id="tab-preview">
+      <div id="preview-content"></div>
+      <div class="pagination" id="preview-pagination"></div>
+    </div>
+
+    <!-- Export Tab -->
+    <div class="tab-content" id="tab-export" style="display:none;">
+      <div class="card">
+        <h2>Export Your Book</h2>
+        <p style="color:var(--text2);margin-bottom:1rem;">Download your processed book in various formats.</p>
+        <div class="btn-row">
+          <a class="btn btn-success" id="btn-export-epub">⬇ EPUB</a>
+          <a class="btn btn-secondary" id="btn-export-md">⬇ Markdown</a>
+          <a class="btn btn-secondary" id="btn-export-txt">⬇ Plain Text</a>
+          <a class="btn btn-secondary" id="btn-export-pdf">⬇ Searchable PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Tab -->
+    <div class="tab-content" id="tab-manage" style="display:none;">
+      <div class="card">
+        <h2>Add More PDFs</h2>
+        <div class="upload-zone" id="add-upload-zone">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
+          <p>Drop more PDFs here</p>
+        </div>
+        <input type="file" id="add-file-input" accept=".pdf" multiple hidden>
+        <ul class="file-list" id="add-file-list"></ul>
+        <div id="add-actions" style="display:none;">
+          <button class="btn btn-primary btn-sm" id="btn-add-pdfs">Add &amp; Process</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Source PDFs</h2>
+        <div id="source-pdf-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let uploadedFiles = [];
+let addFiles = [];
+let currentBookId = null;
+let pollTimer = null;
+
+// ============================================================
+// Helpers
+// ============================================================
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ============================================================
+// Views
+// ============================================================
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// Upload handling
+// ============================================================
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+async function handleFiles(files) {
+  const formData = new FormData();
+  for (const f of files) {
+    if (f.name.toLowerCase().endsWith('.pdf')) formData.append('files', f);
+  }
+  if (!formData.has('files')) return;
+
+  uploadZone.innerHTML = '<p>Uploading…</p>';
+  const data = await api('/api/upload', { method: 'POST', body: formData });
+  uploadZone.innerHTML = `
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
+    <p>Drag & drop PDF files here, or <span class="browse">browse</span></p>
+  `;
+
+  if (data.uploaded) {
+    uploadedFiles = uploadedFiles.concat(data.uploaded);
+    renderFileList();
+    document.getElementById('upload-actions').style.display = 'block';
+    loadBooks(); // refresh existing book list for "add to existing"
+  }
+}
+
+function renderFileList() {
+  fileList.innerHTML = uploadedFiles.map((f, i) => `
+    <li class="file-item">
+      <span class="name">📄 ${f.name}</span>
+      <span class="size">${formatSize(f.size)}</span>
+      <button class="remove" onclick="removeFile(${i})">✕</button>
+    </li>
+  `).join('');
+}
+
+function removeFile(idx) {
+  uploadedFiles.splice(idx, 1);
+  renderFileList();
+  if (!uploadedFiles.length) document.getElementById('upload-actions').style.display = 'none';
+}
+
+// ============================================================
+// Create book
+// ============================================================
+document.getElementById('btn-create-book').addEventListener('click', async () => {
+  if (!uploadedFiles.length) return;
+  const grouping = document.querySelector('input[name="grouping"]:checked').value;
+  const title = document.getElementById('book-title').value.trim() || 'Untitled Book';
+
+  if (grouping === 'existing') {
+    const bookId = document.getElementById('existing-book-id').value;
+    if (!bookId) return alert('Select an existing book');
+    const data = await api(`/api/books/${bookId}/add-pdfs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdfs: uploadedFiles }),
+    });
+    uploadedFiles = [];
+    renderFileList();
+    document.getElementById('upload-actions').style.display = 'none';
+    await startProcessing(bookId);
+    openBook(bookId);
+    return;
+  }
+
+  if (grouping === 'separate') {
+    for (const f of uploadedFiles) {
+      const data = await api('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: f.name.replace('.pdf', ''), pdfs: [f] }),
+      });
+      await startProcessing(data.book.id);
+    }
+  } else {
+    const data = await api('/api/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, pdfs: uploadedFiles }),
+    });
+    await startProcessing(data.book.id);
+    openBook(data.book.id);
+  }
+
+  uploadedFiles = [];
+  renderFileList();
+  document.getElementById('upload-actions').style.display = 'none';
+  loadBooks();
+});
+
+// ============================================================
+// Processing
+// ============================================================
+async function startProcessing(bookId) {
+  const data = await api(`/api/books/${bookId}/process`, { method: 'POST' });
+  if (data.job_id) {
+    pollJob(data.job_id, bookId);
+  }
+}
+
+function pollJob(jobId, bookId) {
+  if (pollTimer) clearInterval(pollTimer);
+  const card = document.getElementById('processing-card');
+  card.style.display = 'block';
+
+  pollTimer = setInterval(async () => {
+    const data = await api(`/api/jobs/${jobId}`);
+    if (!data.job) return;
+    const job = data.job;
+    const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent =
+      `${job.status === 'processing' ? 'Processing' : job.status}: ${job.processed}/${job.total} pages (${pct}%)`;
+
+    if (job.errors && job.errors.length) {
+      document.getElementById('error-list').innerHTML =
+        job.errors.map(e => `<div>⚠ ${e}</div>`).join('');
+    }
+
+    if (job.status === 'done' || job.status === 'done_with_errors' || job.status === 'error') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      document.getElementById('progress-text').textContent =
+        job.status === 'done' ? `✅ Complete: ${job.processed} pages processed`
+        : job.status === 'done_with_errors' ? `⚠ Complete with errors: ${job.processed} pages`
+        : `❌ Error: ${job.error || 'Unknown error'}`;
+      loadBooks();
+      if (currentBookId === bookId) loadBookDetail(bookId);
+    }
+  }, 800);
+}
+
+// ============================================================
+// Book list
+// ============================================================
+async function loadBooks() {
+  const data = await api('/api/books');
+  const list = document.getElementById('book-list');
+  const select = document.getElementById('existing-book-id');
+
+  if (!data.books || !data.books.length) {
+    list.innerHTML = '<p style="color:var(--text2)">No books yet. Upload a PDF to get started.</p>';
+    document.getElementById('existing-book-select').style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = data.books.map(b => `
+    <div class="book-item" onclick="openBook('${b.id}')">
+      <div class="book-info">
+        <div class="title">${b.title}</div>
+        <div class="meta">${b.pdfs.length} PDF(s) · ${b.total_pages || '?'} pages</div>
+      </div>
+      <span class="book-status status-${b.status}">${b.status}</span>
+    </div>
+  `).join('');
+
+  // Populate "add to existing" dropdown
+  select.innerHTML = data.books.map(b => `<option value="${b.id}">${b.title}</option>`).join('');
+  document.getElementById('existing-book-select').style.display = 'block';
+}
+
+// ============================================================
+// Book detail
+// ============================================================
+async function openBook(bookId) {
+  currentBookId = bookId;
+  showView('view-book');
+  switchTab('preview');
+  await loadBookDetail(bookId);
+}
+
+async function loadBookDetail(bookId) {
+  const data = await api(`/api/books/${bookId}/preview?page=0&per_page=20`);
+  if (!data.book) return;
+  const book = data.book;
+
+  document.getElementById('book-detail-title').textContent = book.title;
+  document.getElementById('book-detail-info').innerHTML = `
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;font-size:0.9rem;">
+      <div><span style="color:var(--text2)">Status:</span> <span class="book-status status-${book.status}">${book.status}</span></div>
+      <div><span style="color:var(--text2)">PDFs:</span> ${book.pdfs.length}</div>
+      <div><span style="color:var(--text2)">Pages:</span> ${data.total_pages}</div>
+    </div>
+    ${book.status === 'created' ? '<div class="btn-row"><button class="btn btn-primary btn-sm" onclick="processCurrentBook()">▶ Start Processing</button></div>' : ''}
+    ${book.status === 'processed' ? '<div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="processCurrentBook()">🔄 Reprocess</button></div>' : ''}
+  `;
+
+  // Export links
+  document.getElementById('btn-export-epub').href = `/api/books/${bookId}/export/epub`;
+  document.getElementById('btn-export-md').href = `/api/books/${bookId}/export/markdown`;
+  document.getElementById('btn-export-txt').href = `/api/books/${bookId}/export/txt`;
+  document.getElementById('btn-export-pdf').href = `/api/books/${bookId}/export/pdf`;
+
+  // Preview
+  renderPreview(data);
+
+  // Source PDFs
+  document.getElementById('source-pdf-list').innerHTML = book.pdfs.map(p => `
+    <div class="file-item">
+      <span class="name">📄 ${p.name}</span>
+      <span class="size" style="font-size:0.78rem;color:var(--text2)">hash: ${p.hash}</span>
+    </div>
+  `).join('');
+}
+
+function renderPreview(data) {
+  const container = document.getElementById('preview-content');
+  if (!data.pages || !data.pages.length) {
+    container.innerHTML = '<p style="color:var(--text2)">No pages processed yet.</p>';
+    return;
+  }
+
+  container.innerHTML = data.pages.map(pg => {
+    const badgeClass = pg.method === 'ocr' ? 'badge-ocr' : pg.method === 'error' ? 'badge-error' : 'badge-text';
+    const badgeLabel = pg.method === 'ocr' ? 'OCR' : pg.method === 'error' ? 'ERROR' : 'Text Layer';
+    return `
+      <div class="preview-page">
+        <div class="page-header">
+          <span class="page-num">Page ${pg.page_num + 1}</span>
+          <div>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+            <span class="page-meta" style="margin-left:0.5rem;">${pg.pdf_name}</span>
+          </div>
+        </div>
+        <div class="page-text">${escapeHtml(pg.text)}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Pagination
+  const totalPages = Math.ceil(data.total_pages / data.per_page);
+  const currentPage = data.page;
+  const pag = document.getElementById('preview-pagination');
+  if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+  let html = '';
+  if (currentPage > 0) html += `<button class="btn btn-secondary btn-sm" onclick="loadPreviewPage(${currentPage - 1})">← Prev</button>`;
+  html += `<span style="color:var(--text2);font-size:0.85rem;padding:0.4rem;">Page ${currentPage + 1} / ${totalPages}</span>`;
+  if (currentPage < totalPages - 1) html += `<button class="btn btn-secondary btn-sm" onclick="loadPreviewPage(${currentPage + 1})">Next →</button>`;
+  pag.innerHTML = html;
+}
+
+async function loadPreviewPage(page) {
+  const data = await api(`/api/books/${currentBookId}/preview?page=${page}&per_page=20`);
+  renderPreview(data);
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+async function processCurrentBook() {
+  if (!currentBookId) return;
+  await startProcessing(currentBookId);
+}
+
+// ============================================================
+// Tabs
+// ============================================================
+document.querySelectorAll('#book-tabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
+
+function switchTab(name) {
+  document.querySelectorAll('#book-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['preview', 'export', 'manage'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
+  });
+}
+
+// ============================================================
+// Add PDFs to existing book
+// ============================================================
+const addUploadZone = document.getElementById('add-upload-zone');
+const addFileInput = document.getElementById('add-file-input');
+
+addUploadZone.addEventListener('click', () => addFileInput.click());
+addUploadZone.addEventListener('dragover', e => { e.preventDefault(); addUploadZone.classList.add('dragover'); });
+addUploadZone.addEventListener('dragleave', () => addUploadZone.classList.remove('dragover'));
+addUploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  addUploadZone.classList.remove('dragover');
+  handleAddFiles(e.dataTransfer.files);
+});
+addFileInput.addEventListener('change', e => handleAddFiles(e.target.files));
+
+async function handleAddFiles(files) {
+  const formData = new FormData();
+  for (const f of files) {
+    if (f.name.toLowerCase().endsWith('.pdf')) formData.append('files', f);
+  }
+  if (!formData.has('files')) return;
+
+  const data = await api('/api/upload', { method: 'POST', body: formData });
+  if (data.uploaded) {
+    addFiles = addFiles.concat(data.uploaded);
+    document.getElementById('add-file-list').innerHTML = addFiles.map((f, i) => `
+      <li class="file-item">
+        <span class="name">📄 ${f.name}</span>
+        <span class="size">${formatSize(f.size)}</span>
+      </li>
+    `).join('');
+    document.getElementById('add-actions').style.display = 'block';
+  }
+}
+
+document.getElementById('btn-add-pdfs').addEventListener('click', async () => {
+  if (!addFiles.length || !currentBookId) return;
+  await api(`/api/books/${currentBookId}/add-pdfs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pdfs: addFiles }),
+  });
+  addFiles = [];
+  document.getElementById('add-file-list').innerHTML = '';
+  document.getElementById('add-actions').style.display = 'none';
+  await startProcessing(currentBookId);
+  loadBookDetail(currentBookId);
+});
+
+// ============================================================
+// Back button
+// ============================================================
+document.getElementById('btn-back').addEventListener('click', () => {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  currentBookId = null;
+  document.getElementById('processing-card').style.display = 'none';
+  showView('view-main');
+  loadBooks();
+});
+
+// ============================================================
+// Init
+// ============================================================
+loadBooks();
+</script>
+</body>
+</html>

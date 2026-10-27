@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: book-scanner
+    runtime: docker
+    plan: free
+    envVars:
+      - key: BOOKSCANNER_DATA
+        value: /app/data
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: PORT
+        value: "5001"

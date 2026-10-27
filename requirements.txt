@@ -1,0 +1,6 @@
+PyMuPDF
+Pillow
+pytesseract
+EbookLib
+Flask
+gunicorn
